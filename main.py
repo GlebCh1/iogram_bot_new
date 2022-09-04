@@ -2,7 +2,6 @@ from aiogram import Bot, Dispatcher, executor, types
 import config
 import my_parser
 import other_func
-import fsm
 from string import ascii_letters
 
 
@@ -34,7 +33,11 @@ async def answer_dr(message, state: FSMContext):
 
     if message.text.lower() in other_func.names:
         await search_for_name()
-    elif message.text.lower() not in other_func.names:
+    elif message.text.lower() in ["все др"]:
+        for elem in sorted(other_func.lst_person, key=lambda x: x.birthday.split(".")[1]):  # сортировка
+            await bot.send_message(message.chat.id, f"{elem.name}\n{elem.birthday}\nвозраст: {elem.get_age()}", parse_mode='html')
+            await state.finish()  # выход из состояния поиска имени
+    else:
         await bot.send_message(message.chat.id, f"Указанного имени нет в списке, выход из состояния поиска имени...", parse_mode='html')
         await state.finish()  # выход из состояния поиска имени
 
@@ -63,7 +66,8 @@ async def callback_1(message):
         elif message.text.lower() == "привет":
             await bot.send_message(message.chat.id, f'''И вам привет, введите корректную команду, например:
 \n"финансы"\n"погода"\n"перевод\n"ДР".
-\nДля просмотра доступных команд - введите любой символ.''', parse_mode='html')
+\nДля просмотра доступных команд - введите любой символ.
+Для создания основной клавиатуры - введите: /start''', parse_mode='html')
         elif message.text.lower() in ["финансы", "/финансы"]:
             await bot.send_message(message.chat.id, f"Получение данных, ожидайте...", parse_mode='html')
             await bot.send_message(message.chat.id, f"""{my_parser.Parser.content_usd_rub()} за $
@@ -90,7 +94,7 @@ async def callback_1(message):
                                    parse_mode='html')
         # реализация модуля с ДР
         elif message.text.lower() in ["др", "/др"]:
-            await bot.send_message(message.chat.id, f'Введите имя будущего именинника:', parse_mode='html')
+            await bot.send_message(message.chat.id, f'Для вывода информации о дне рождения - введите имя:\n\nДля вывода всего списка - введите: "все ДР."', parse_mode='html')
             await Birthday.name_input.set()  # переход в состояние ввода имени
 
         elif message.text.lower() in other_func.names:
@@ -100,8 +104,7 @@ async def callback_1(message):
 
         elif message.text.lower() == "все др":
             for elem in sorted(other_func.lst_person, key=lambda x: x.birthday.split(".")[1]):  # сортировка
-                await bot.send_message(message.chat.id, f"{elem.name}\n{elem.birthday}\nвозраст: {elem.get_age()}",
-                                       parse_mode='html')
+                await bot.send_message(message.chat.id, f"{elem.name}\n{elem.birthday}\nвозраст: {elem.get_age()}", parse_mode='html')
 
         # cоздаем инлайновую клавиатуру, если ввели неизвестную комманду
         else:
@@ -135,7 +138,7 @@ async def callback_2(call: types.callback_query):
                                parse_mode='html')
     elif call.data == "q4":
         await bot.send_message(call.message.chat.id,
-                               f'Для вывода информации о дне рождения - введите имя.\n\nДля вывода всего списка - введите: "все ДР."',
+                               f'Для вывода информации о дне рождения - введите имя:\n\nДля вывода всего списка - введите: "все ДР."',
                                parse_mode='html')
         await Birthday.name_input.set()
 
