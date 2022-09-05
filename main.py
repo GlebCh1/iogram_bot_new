@@ -2,7 +2,7 @@ from aiogram import Bot, Dispatcher, executor, types
 import config
 import my_parser
 import other_func
-from string import ascii_letters
+from string import ascii_letters, digits, printable
 
 
 # FSM import  ##########################################################################################################
@@ -17,12 +17,13 @@ bot = Bot(token=config.TOKEN)
 dp = Dispatcher(bot, storage=storage)
 
 
+# реализация FSM для модуля дней рождений
 class Birthday(StatesGroup):
     name_input = State()
 
 
 @dp.message_handler(state=Birthday.name_input)
-async def answer_dr(message, state: FSMContext):
+async def answer_birthday(message, state: FSMContext):
     async def search_for_name():
         for key in other_func.dict_obj:
             if message.text.lower() in key:
@@ -40,6 +41,26 @@ async def answer_dr(message, state: FSMContext):
     else:
         await bot.send_message(message.chat.id, f"Указанного имени нет в списке, выход из состояния поиска имени...", parse_mode='html')
         await state.finish()  # выход из состояния поиска имени
+
+
+# реализация FSM для модуля перевода
+class Translation(StatesGroup):
+    text_input = State()
+
+
+@dp.message_handler(state=Translation.text_input)
+async def answer_translation(message, state: FSMContext):
+    # реализация перевода Ru_En
+    if all([True if letter in ascii_letters + digits else False for letter in message.text.lower()]):
+        await bot.send_message(message.chat.id, f"https://translate.google.com/?hl=ru&tab=TT&sl=en&tl=ru&text={message.text}&op=translate", parse_mode='html')
+        await state.finish()  # выход из состояния поиска имени
+    # реализация перевода En_Ru
+    elif all([True if letter in "абвгдежзийклмнопрстуфхцчшщъыьэюя" + digits else False for letter in message.text.lower()]):
+        await bot.send_message(message.chat.id, f"https://translate.google.com/?hl=en&tab=TT&sl=ru&tl=en&text={message.text}&op=translate", parse_mode='html')
+        await state.finish()  # выход из состояния поиска имени
+    else:
+        await bot.send_message(message.chat.id, f"Введены недопустимые символы.\nДопускается вводить только rus или eng буквы, а также цифры.\nВыход из состояния поиска имени...", parse_mode='html')
+        await state.finish()
 
 
 ########################################################################################################################
@@ -80,22 +101,12 @@ async def callback_1(message):
             await bot.send_message(message.chat.id, f"""Погода в Краснодаре: {my_parser.Parser.content_weather()}\n
 Источник: https://www.gismeteo.ru/weather-krasnodar-5136/now""", parse_mode='html')
         elif message.text.lower() in ["перевод"]:
-            await bot.send_message(message.chat.id,
-                                   f'Для перевода отдельного слова - напишите в чат данное слово в виде: "=слово"')
-        # реализация перевода Ru_En
-        elif message.text[0] == "=" and len(message.text) >= 2 and message.text[1] not in ascii_letters:
-            await bot.send_message(message.chat.id,
-                                   f"https://translate.google.com/?hl=ru&tab=TT&sl=ru&tl=en&text={message.text[1:]}&op=translate",
-                                   parse_mode='html')
-        # реализация перевода En_Ru
-        elif message.text[0] == "=" and len(message.text) >= 2 and message.text[1] in ascii_letters:
-            await bot.send_message(message.chat.id,
-                                   f"https://translate.google.com/?hl=en&tab=TT&sl=ru&tl=ru&text={message.text[1:]}&op=translate",
-                                   parse_mode='html')
+            await bot.send_message(message.chat.id, f"Для перевода отдельного слова - введите слово:", parse_mode='html')
+            await Translation.text_input.set()   # переход в состояние ввода слова для перевода
         # реализация модуля с ДР
         elif message.text.lower() in ["др", "/др"]:
             await bot.send_message(message.chat.id, f'Для вывода информации о дне рождения - введите имя:\n\nДля вывода всего списка - введите: "все ДР."', parse_mode='html')
-            await Birthday.name_input.set()  # переход в состояние ввода имени
+            await Birthday.name_input.set()  # переход в состояние ввода имени именниника
 
         elif message.text.lower() in other_func.names:
             await bot.send_message(message.chat.id,
@@ -133,9 +144,8 @@ async def callback_2(call: types.callback_query):
         await bot.send_message(call.message.chat.id, f"""Погода в Краснодаре: {my_parser.Parser.content_weather()}\n
 Источник: https://www.gismeteo.ru/weather-krasnodar-5136/now""", parse_mode='html')
     elif call.data == "q3":
-        await bot.send_message(call.message.chat.id,
-                               f'Для перевода отдельного слова - напишите в чат данное слово в виде: "=слово"',
-                               parse_mode='html')
+        await bot.send_message(call.message.chat.id, f"Для перевода отдельного слова - введите слово:", parse_mode='html')
+        await Translation.text_input.set()  # переход в состояние ввода слова для перевода
     elif call.data == "q4":
         await bot.send_message(call.message.chat.id,
                                f'Для вывода информации о дне рождения - введите имя:\n\nДля вывода всего списка - введите: "все ДР."',
