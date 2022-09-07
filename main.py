@@ -139,7 +139,7 @@ async def callback_1(message):
 \n"финансы"\n"погода"\n"перевод\n"ДР".
 \nДля просмотра доступных команд - введите любой символ.
 Для создания основной клавиатуры - введите: /start''', parse_mode='html')
-        elif message.text.lower() in ["финансы", "/финансы"]:
+        elif message.text.lower() in ["💵финансы", "финансы", "/финансы"]:
             await bot.send_message(message.chat.id, f"Получение данных, ожидайте...", parse_mode='html')
             await bot.send_message(message.chat.id, f"""$ <b>{my_parser.Parser.content_usd_rub()}</b>
 € <b>{my_parser.Parser.content_eur_rub()}</b>
@@ -147,16 +147,16 @@ async def callback_1(message):
 Индекс S&P 500: <b>{my_parser.Parser.content_spx()}</b>
 Индекс Мосбиржи: <b>{my_parser.Parser.content_imoex()}</b>
 \nИсточник: https://ru.investing.com""", parse_mode='html')
-        elif message.text.lower() in ["погода", "/погода", "погода краснодар", "погода в краснодаре"]:
+        elif message.text.lower() in ["⛅погода", "погода", "/погода", "погода краснодар", "погода в краснодаре"]:
             await bot.send_message(message.chat.id, f"""Погода в Краснодаре: {my_parser.Parser.content_weather()}\n
 Источник: https://www.gismeteo.ru/weather-krasnodar-5136/now""", parse_mode='html')
-        elif message.text.lower() in ["перевод"]:
+        elif message.text.lower() in ["🇬🇧перевод", "перевод"]:
             await bot.send_message(message.chat.id, f"Для перевода отдельного слова - введите слово:",
                                    parse_mode='html')
             await Translation.text_input.set()  # переход в состояние ввода слова для перевода
 
         # реализация модуля с ДР
-        elif message.text.lower() in ["др", "/др"]:
+        elif message.text.lower() in ["🎁др", "др", "/др"]:
             await bot.send_message(message.chat.id,
                                    f'Для вывода информации о дне рождения - введите имя:\n\nДля вывода всего списка - введите: "все ДР."',
                                    parse_mode='html')
@@ -173,7 +173,7 @@ async def callback_1(message):
                                        parse_mode='html')
 
         # реализация модуля с калькулятором
-        elif message.text.lower() in ["калькулятор", "🧮калькулятор"]:
+        elif message.text.lower() in ["🧮калькулятор", "калькулятор"]:
             await bot.send_message(message.chat.id, f'''<b>Переход в состояние калькулятора...</b>
             
 Допускаются пробелы, а также "." или "," для дробных чисел.
