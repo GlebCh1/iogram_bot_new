@@ -227,7 +227,7 @@ async def callback_2(call: types.callback_query):
         await Birthday.name_input.set()
     elif call.data == "q5":
         await bot.send_message(call.message.chat.id, f'''<b>Переход в состояние калькулятора...</b>
-
+ 
 Допускаются пробелы, а также "." или "," для дробных чисел.
 
 Примеры доступных операций:
