@@ -23,24 +23,16 @@ class Birthday(StatesGroup):
 @dp.message_handler(state=Birthday.name_input)
 async def answer_birthday(message, state: FSMContext):
     async def search_for_name():
-        for key in other_func.dict_obj:
-            if message.text.lower() in key:
-                await bot.send_message(message.chat.id,
-                                       f"\n{other_func.dict_obj[key].birthday}\nвозраст: {other_func.dict_obj[key].get_age()}",
-                                       parse_mode='html')
-                await state.finish()  # выход из состояния поиска имени
-
-    if message.text.lower() in other_func.names:
+        person_obj = other_func.Person.create_person(message.text.lower())
+        await bot.send_message(message.chat.id, f"<b>{person_obj.name}</b>\n{person_obj.birthday}\nвозраст: {person_obj.get_age()}", parse_mode='html')
+    if message.text.lower() in other_func.Person.create_names():
         await search_for_name()
     elif message.text.lower() in ["все др"]:
-        for elem in sorted(other_func.lst_person, key=lambda x: x.birthday.split(".")[1]):  # сортировка
-            await bot.send_message(message.chat.id, f"{elem.name}\n{elem.birthday}\nвозраст: {elem.get_age()}",
-                                   parse_mode='html')
-            await state.finish()  # выход из состояния поиска имени
+        for elem in sorted(other_func.Person.create_person(message.text.lower()), key=lambda x: x.birthday.split(".")[1]):  # сортировка
+            await bot.send_message(message.chat.id, f"{elem.name}\n{elem.birthday}\nвозраст: {elem.get_age()}", parse_mode='html')
     else:
-        await bot.send_message(message.chat.id, f"Указанного имени нет в списке, выход из состояния поиска имени...",
-                               parse_mode='html')
-        await state.finish()  # выход из состояния поиска имени
+        await bot.send_message(message.chat.id, f"Указанного имени нет в списке, выход из состояния поиска имени...", parse_mode='html')
+    await state.finish()  # выход из состояния поиска имени
 
 
 # реализация FSM для модуля перевода
@@ -55,19 +47,17 @@ async def answer_translation(message, state: FSMContext):
         await bot.send_message(message.chat.id,
                                f"https://translate.google.com/?hl=ru&tab=TT&sl=en&tl=ru&text={message.text}&op=translate",
                                parse_mode='html')
-        await state.finish()  # выход из состояния поиска имени
     # реализация перевода En_Ru
     elif all([True if letter in "абвгдежзийклмнопрстуфхцчшщъыьэюя" + digits else False for letter in
               message.text.lower()]):
         await bot.send_message(message.chat.id,
                                f"https://translate.google.com/?hl=en&tab=TT&sl=ru&tl=en&text={message.text}&op=translate",
                                parse_mode='html')
-        await state.finish()  # выход из состояния поиска имени
     else:
         await bot.send_message(message.chat.id,
                                f"Введены недопустимые символы.\nДопускается вводить только rus или eng буквы, а также цифры.\nВыход из состояния поиска имени...",
                                parse_mode='html')
-        await state.finish()
+    await state.finish()  # выход из состояния поиска имени
 
 
 # реализация FSM для модуля калькулятора
@@ -81,21 +71,8 @@ async def answer_calculator(message, state: FSMContext):
         operator = "".join([elem for elem in message.text if elem in ["+", "-", "*", "/", "%"]])
         working_line = message.text.replace(",", ".").split(operator)
         num1, num2 = map(lambda num: int(num.strip()) if "." not in num else float(num.strip()), working_line)
-        if operator == "+":
-            await bot.send_message(message.chat.id, f"{num1 + num2}\n\n<b>Выход из состояния калькулятора...</b>", parse_mode='html')
-        elif operator == "-":
-            await bot.send_message(message.chat.id, f"{num1 - num2}\n\n<b>Выход из состояния калькулятора...</b>", parse_mode='html')
-        elif operator == "*":
-            await bot.send_message(message.chat.id, f"{num1 * num2}\n\n<b>Выход из состояния калькулятора...</b>", parse_mode='html')
-        elif operator == "/":
-            await bot.send_message(message.chat.id, f"{num1 / num2}\n\n<b>Выход из состояния калькулятора...</b>", parse_mode='html')
-        elif operator == "**":
-            await bot.send_message(message.chat.id, f"{num1 ** num2}\n\n<b>Выход из состояния калькулятора...</b>", parse_mode='html')
-        elif operator == "//":
-            await bot.send_message(message.chat.id, f"{num1 // num2}\n\n<b>Выход из состояния калькулятора...</b>", parse_mode='html')
-        elif operator == "%":
-            await bot.send_message(message.chat.id, f"{num1 % num2}\n\n<b>Выход из состояния калькулятора...</b>", parse_mode='html')
-    except ValueError:
+        await bot.send_message(message.chat.id, f"{eval(f'{num1}{operator}{num2}', {}, {})}\n\n<b>Выход из состояния калькулятора...</b>", parse_mode='html')
+    except:
         await bot.send_message(message.chat.id, f'''<b>Недопустимый формат ввода значений...</b>
         
 Введите значения в формате:
@@ -146,31 +123,29 @@ async def callback_1(message):
 Нефть Brent: <b>{my_parser.Parser.content_oil_brent()}</b>
 Индекс S&P 500: <b>{my_parser.Parser.content_spx()}</b>
 Индекс Мосбиржи: <b>{my_parser.Parser.content_imoex()}</b>
-\nИсточник: https://ru.investing.com""", parse_mode='html')
+\nИсточник: https://mfd.ru""", parse_mode='html')
         elif message.text.lower() in ["⛅погода", "погода", "/погода", "погода краснодар", "погода в краснодаре"]:
             await bot.send_message(message.chat.id, f"""Погода в Краснодаре: {my_parser.Parser.content_weather()}\n
 Источник: https://www.gismeteo.ru/weather-krasnodar-5136/now""", parse_mode='html')
         elif message.text.lower() in ["🇬🇧перевод", "перевод"]:
-            await bot.send_message(message.chat.id, f"Для перевода отдельного слова - введите слово:",
-                                   parse_mode='html')
+            await bot.send_message(message.chat.id, f'''<b>Переход в состояние переводчика...</b>
+
+Для перевода отдельного слова - введите слово:''', parse_mode='html')
             await Translation.text_input.set()  # переход в состояние ввода слова для перевода
 
         # реализация модуля с ДР
         elif message.text.lower() in ["🎁др", "др", "/др"]:
-            await bot.send_message(message.chat.id,
-                                   f'Для вывода информации о дне рождения - введите имя:\n\nДля вывода всего списка - введите: "все ДР."',
-                                   parse_mode='html')
+            await bot.send_message(message.chat.id, f'''<b>Переход в состояние ДР...</b>
+        
+Для вывода информации о дне рождения - введите имя:\n\nДля вывода всего списка - введите: "все ДР."''', parse_mode='html')
             await Birthday.name_input.set()  # переход в состояние ввода имени именниника
 
-        elif message.text.lower() in other_func.names:
-            await bot.send_message(message.chat.id,
-                                   f'Для вывода информации о дне рождения - введите "ДР" или воспользуйтесь соотвествующей кнопкой.\n\nДля вывода всего списка - введите: "все ДР".',
-                                   parse_mode='html')
+        elif message.text.lower() in other_func.Person.create_names():
+            await bot.send_message(message.chat.id, f'Для вывода информации о дне рождения - введите "ДР" или воспользуйтесь соотвествующей кнопкой.\n\nДля вывода всего списка - введите: "все ДР".', parse_mode='html')
 
         elif message.text.lower() == "все др":
-            for elem in sorted(other_func.lst_person, key=lambda x: x.birthday.split(".")[1]):  # сортировка
-                await bot.send_message(message.chat.id, f"{elem.name}\n{elem.birthday}\nвозраст: {elem.get_age()}",
-                                       parse_mode='html')
+            for elem in sorted(other_func.Person.create_person(message.text.lower()), key=lambda x: x.birthday.split(".")[1]):  # сортировка
+                await bot.send_message(message.chat.id, f"{elem.name}\n{elem.birthday}\nвозраст: {elem.get_age()}", parse_mode='html')
 
         # реализация модуля с калькулятором
         elif message.text.lower() in ["🧮калькулятор", "калькулятор"]:
@@ -217,14 +192,15 @@ async def callback_2(call: types.callback_query):
         await bot.send_message(call.message.chat.id, f"""Погода в Краснодаре: {my_parser.Parser.content_weather()}\n
 Источник: https://www.gismeteo.ru/weather-krasnodar-5136/now""", parse_mode='html')
     elif call.data == "q3":
-        await bot.send_message(call.message.chat.id, f"Для перевода отдельного слова - введите слово:",
-                               parse_mode='html')
+        await bot.send_message(call.message.chat.id, f'''<b>Переход в состояние переводчика...</b>
+
+Для перевода отдельного слова - введите слово:''', parse_mode='html')
         await Translation.text_input.set()  # переход в состояние ввода слова для перевода
     elif call.data == "q4":
-        await bot.send_message(call.message.chat.id,
-                               f'Для вывода информации о дне рождения - введите имя:\n\nДля вывода всего списка - введите: "все ДР."',
-                               parse_mode='html')
-        await Birthday.name_input.set()
+        await bot.send_message(call.message.chat.id, f'''<b>Переход в состояние ДР...</b>
+        
+Для вывода информации о дне рождения - введите имя:\n\nДля вывода всего списка - введите: "все ДР."''', parse_mode='html')
+        await Birthday.name_input.set()  # переход в состояние ДР
     elif call.data == "q5":
         await bot.send_message(call.message.chat.id, f'''<b>Переход в состояние калькулятора...</b>
  
