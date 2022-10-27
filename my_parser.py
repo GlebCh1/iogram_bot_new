@@ -61,3 +61,4 @@ class Parser:
 # d = Parser.content_spx()
 # e = Parser.content_oil_brent()
 # pass
+# pass
