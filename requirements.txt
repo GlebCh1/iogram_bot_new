@@ -3,4 +3,3 @@ beautifulsoup4~=4.11.1
 aiogram~=2.22.2
 datetime~=4.5
 fake_useragent~=0.1.11
-
