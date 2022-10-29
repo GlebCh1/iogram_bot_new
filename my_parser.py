@@ -62,3 +62,4 @@ class Parser:
 # e = Parser.content_oil_brent()
 # pass
 # pass
+# pass
