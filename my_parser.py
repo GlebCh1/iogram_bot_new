@@ -2,6 +2,7 @@ import requests
 from fake_useragent import UserAgent
 from bs4 import BeautifulSoup
 
+
 URL_1_usd_rub = "https://mfd.ru/marketdata/ticker/?id=2287"
 URL_2_eur_rub = "https://mfd.ru/marketdata/ticker/?id=2282"
 URL_3_oil_brent = "https://mfd.ru/marketdata/ticker/?id=1*"

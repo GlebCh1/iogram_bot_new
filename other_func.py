@@ -34,7 +34,7 @@ class Person:
     def create_names():
         with sq.connect("people.db") as con:
             cur = con.cursor()
-            names = [name.split() for elem in cur.execute("SELECT other_name FROM p1").fetchall() for name in elem]
+            names = [name.split(",") for elem in cur.execute("SELECT other_name FROM p1").fetchall() for name in elem]
             return [name for elem in names for name in elem]
 
     # обращение к таблице p1 (БД people.db) для последующего создания объекта класса Person и вывода информации
@@ -45,7 +45,8 @@ class Person:
             cur = con.cursor()
             _id, total_id = 1, len(cur.execute(f"SELECT id FROM p1").fetchall())
             if mes in ["все др"]:
-                return [Person(elem[0], elem[1].split(".")) for elem in cur.execute(f"SELECT name, birthdate FROM p1").fetchall()]
+                return [Person(elem[0], elem[1].split(".")) for elem in
+                        cur.execute(f"SELECT name, birthdate FROM p1").fetchall()]
             while _id <= total_id:
                 sample = cur.execute(f"SELECT name, other_name FROM p1 WHERE id = {_id}").fetchall()
                 sample = [[elem[0], *elem[1].split()] for elem in sample][0]
@@ -54,3 +55,6 @@ class Person:
                         ".")
                     return cls(sample[0], age)
                 _id += 1
+
+
+

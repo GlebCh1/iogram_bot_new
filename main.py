@@ -1,8 +1,11 @@
+from datetime import datetime
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+import sqlite3 as sq
 from aiogram import Bot, Dispatcher, executor, types
 import config
 import my_parser
 import other_func
-from string import ascii_letters, digits, printable
+from string import ascii_letters, digits
 
 # FSM import  ##########################################################################################################
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
@@ -15,7 +18,35 @@ bot = Bot(token=config.TOKEN)
 dp = Dispatcher(bot, storage=storage)
 
 
-# реализация FSM для модуля дней рождений
+# реализация уведомлений о ДР  #########################################################################################
+async def send_message_birthday():
+    with sq.connect("people.db") as con:
+        today = datetime.today()  # получение текущей даты
+        cur = con.cursor()
+        name_age = {elem[0]: elem[1:] for elem in
+                    cur.execute(f"SELECT name, birthdate, name_declension FROM p1").fetchall()}
+        for key, value in name_age.items():
+            d, m = map(int, value[0].split(".")[:2])
+            dr = datetime(today.year, m, d)
+            delta = dr - today
+            if delta.days < 0:  # если ДР уже прошел - значит следующий - в следующем году, поэтому добавляем 1 год
+                dr = datetime(today.year + 1, m, d)
+                delta = dr - today
+            if delta.days <= 2:  # если до ДР остается меньше двух дней происходит рассылка сообщений пользователям, id
+                # которых добавлены в таблицу id_telegramm в БД
+                for id_t in cur.execute(f"SELECT id_t FROM id_telegramm").fetchall():
+                    await bot.send_message(id_t[0], f"""<b>Уведомление 🍼🍺🍷🥃</b>
+Чувствую я, что близится 
+День Рождения <b>{name_age[key][1]}</b>
+<b>{name_age[key][0]}</b>""", parse_mode='html')
+
+
+scheduler = AsyncIOScheduler(timezone="Europe/Moscow")  # запуск уведомлений
+scheduler.add_job(send_message_birthday, trigger="interval", hours=8)
+scheduler.start()
+
+
+# реализация FSM для модуля дней рождений  #############################################################################
 class Birthday(StatesGroup):
     name_input = State()
 
@@ -24,18 +55,24 @@ class Birthday(StatesGroup):
 async def answer_birthday(message, state: FSMContext):
     async def search_for_name():
         person_obj = other_func.Person.create_person(message.text.lower())
-        await bot.send_message(message.chat.id, f"<b>{person_obj.name}</b>\n{person_obj.birthday}\nвозраст: {person_obj.get_age()}", parse_mode='html')
+        await bot.send_message(message.chat.id,
+                               f"<b>{person_obj.name}</b>\n{person_obj.birthday}\nвозраст: {person_obj.get_age()}",
+                               parse_mode='html')
+
     if message.text.lower() in other_func.Person.create_names():
         await search_for_name()
     elif message.text.lower() in ["все др"]:
-        for elem in sorted(other_func.Person.create_person(message.text.lower()), key=lambda x: x.birthday.split(".")[1]):  # сортировка
-            await bot.send_message(message.chat.id, f"{elem.name}\n{elem.birthday}\nвозраст: {elem.get_age()}", parse_mode='html')
+        for elem in sorted(other_func.Person.create_person(message.text.lower()),
+                           key=lambda x: x.birthday.split(".")[1]):  # сортировка
+            await bot.send_message(message.chat.id, f"{elem.name}\n{elem.birthday}\nвозраст: {elem.get_age()}",
+                                   parse_mode='html')
     else:
-        await bot.send_message(message.chat.id, f"Указанного имени нет в списке, выход из состояния поиска имени...", parse_mode='html')
+        await bot.send_message(message.chat.id, f"Указанного имени нет в списке, выход из состояния поиска имени...",
+                               parse_mode='html')
     await state.finish()  # выход из состояния поиска имени
 
 
-# реализация FSM для модуля перевода
+# реализация FSM для модуля перевода  ##################################################################################
 class Translation(StatesGroup):
     text_input = State()
 
@@ -60,7 +97,7 @@ async def answer_translation(message, state: FSMContext):
     await state.finish()  # выход из состояния поиска имени
 
 
-# реализация FSM для модуля калькулятора
+# реализация FSM для модуля калькулятора  ##############################################################################
 class Calculator(StatesGroup):
     nums_input = State()
 
@@ -71,7 +108,9 @@ async def answer_calculator(message, state: FSMContext):
         operator = "".join([elem for elem in message.text if elem in ["+", "-", "*", "/", "%"]])
         working_line = message.text.replace(",", ".").split(operator)
         num1, num2 = map(lambda num: int(num.strip()) if "." not in num else float(num.strip()), working_line)
-        await bot.send_message(message.chat.id, f"{eval(f'{num1}{operator}{num2}', {}, {})}\n\n<b>Выход из состояния калькулятора...</b>", parse_mode='html')
+        await bot.send_message(message.chat.id,
+                               f"{eval(f'{num1}{operator}{num2}', {}, {})}\n\n<b>Выход из состояния калькулятора...</b>",
+                               parse_mode='html')
     except:
         await bot.send_message(message.chat.id, f'''<b>Недопустимый формат ввода значений...</b>
         
@@ -89,11 +128,12 @@ async def answer_calculator(message, state: FSMContext):
     await state.finish()
 
 
-# ОСНОВНОЙ КОД  ########################################################################################################
+# ОБРАБОТЧИКИ СООБЩЕНИЙ  ###############################################################################################
 @dp.message_handler(commands=["start"])
 async def start(message):
     mess = f'''Привет <b>{message.from_user.first_name}</b>, ваш id: {message.chat.id}\n\nВведите корректную команду, например:\n\n"финансы"\n"погода"\n"перевод\n"ДР".\n
 Для просмотра доступных команд - введите любой символ.'''
+
     #  создаем обычную клавиатуру
     markup = types.ReplyKeyboardMarkup()
     r_btn1 = types.KeyboardButton("💵Финансы")
@@ -103,6 +143,13 @@ async def start(message):
     r_btn5 = types.KeyboardButton("🧮Калькулятор")
     markup.add(r_btn1, r_btn2, r_btn3, r_btn4, r_btn5)  # добавляем созданные кнопки
     await bot.send_message(message.chat.id, mess, parse_mode='html', reply_markup=markup)
+
+    # добавляем id и name пользователя в таблицу id_telegramm в БД, если id отсутствует в указанной таблице
+    with sq.connect("people.db") as con:
+        cur = con.cursor()
+        if message.chat.id not in [elem[0] for elem in cur.execute(f"SELECT id_t FROM id_telegramm").fetchall()]:
+            cur.execute(
+                f"INSERT INTO id_telegramm (id_t, name_t) VALUES ({message.chat.id}, '{message.from_user.first_name}')")
 
 
 @dp.message_handler(content_types=["text"])
@@ -137,15 +184,20 @@ async def callback_1(message):
         elif message.text.lower() in ["🎁др", "др", "/др"]:
             await bot.send_message(message.chat.id, f'''<b>Переход в состояние ДР...</b>
         
-Для вывода информации о дне рождения - введите имя:\n\nДля вывода всего списка - введите: "все ДР."''', parse_mode='html')
+Для вывода информации о дне рождения - введите имя:\n\nДля вывода всего списка - введите: "все ДР."''',
+                                   parse_mode='html')
             await Birthday.name_input.set()  # переход в состояние ввода имени именниника
 
         elif message.text.lower() in other_func.Person.create_names():
-            await bot.send_message(message.chat.id, f'Для вывода информации о дне рождения - введите "ДР" или воспользуйтесь соотвествующей кнопкой.\n\nДля вывода всего списка - введите: "все ДР".', parse_mode='html')
+            await bot.send_message(message.chat.id,
+                                   f'Для вывода информации о дне рождения - введите "ДР" или воспользуйтесь соотвествующей кнопкой.\n\nДля вывода всего списка - введите: "все ДР".',
+                                   parse_mode='html')
 
         elif message.text.lower() == "все др":
-            for elem in sorted(other_func.Person.create_person(message.text.lower()), key=lambda x: x.birthday.split(".")[1]):  # сортировка
-                await bot.send_message(message.chat.id, f"{elem.name}\n{elem.birthday}\nвозраст: {elem.get_age()}", parse_mode='html')
+            for elem in sorted(other_func.Person.create_person(message.text.lower()),
+                               key=lambda x: x.birthday.split(".")[1]):  # сортировка
+                await bot.send_message(message.chat.id, f"{elem.name}\n{elem.birthday}\nвозраст: {elem.get_age()}",
+                                       parse_mode='html')
 
         # реализация модуля с калькулятором
         elif message.text.lower() in ["🧮калькулятор", "калькулятор"]:
@@ -177,7 +229,7 @@ async def callback_1(message):
                                    reply_markup=markup)
 
 
-# вызов команд через инлайновую клавиатуру
+# вызов команд через инлайновую клавиатуру  ############################################################################
 @dp.callback_query_handler(text_startswith="q")
 async def callback_2(call: types.callback_query):
     if call.data == "q1":
@@ -199,7 +251,8 @@ async def callback_2(call: types.callback_query):
     elif call.data == "q4":
         await bot.send_message(call.message.chat.id, f'''<b>Переход в состояние ДР...</b>
         
-Для вывода информации о дне рождения - введите имя:\n\nДля вывода всего списка - введите: "все ДР."''', parse_mode='html')
+Для вывода информации о дне рождения - введите имя:\n\nДля вывода всего списка - введите: "все ДР."''',
+                               parse_mode='html')
         await Birthday.name_input.set()  # переход в состояние ДР
     elif call.data == "q5":
         await bot.send_message(call.message.chat.id, f'''<b>Переход в состояние калькулятора...</b>
