@@ -43,18 +43,11 @@ class Person:
     def create_person(cls, mes):
         with sq.connect("people.db") as con:
             cur = con.cursor()
-            _id, total_id = 1, len(cur.execute(f"SELECT id FROM p1").fetchall())
             if mes in ["все др"]:
                 return [Person(elem[0], elem[1].split(".")) for elem in
                         cur.execute(f"SELECT name, birthdate FROM p1").fetchall()]
-            while _id <= total_id:
-                sample = cur.execute(f"SELECT name, other_name FROM p1 WHERE id = {_id}").fetchall()
-                sample = [[elem[0], *elem[1].split()] for elem in sample][0]
-                if mes in sample:
-                    age = cur.execute(f"SELECT birthdate FROM p1 WHERE name = '{sample[0]}'").fetchall()[0][0].split(
-                        ".")
-                    return cls(sample[0], age)
-                _id += 1
-
-
-
+            else:
+                for _id in cur.execute(f"SELECT id FROM p1").fetchall():
+                    name, other_name, birthdate = cur.execute(f"SELECT name, other_name, birthdate FROM p1 WHERE id = {_id[0]}").fetchall()[0]
+                    if mes in [name, *other_name.split(",")]:
+                        return cls(name, birthdate.split("."))

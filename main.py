@@ -18,31 +18,42 @@ bot = Bot(token=config.TOKEN)
 dp = Dispatcher(bot, storage=storage)
 
 
-# реализация уведомлений о ДР  #########################################################################################
-async def send_message_birthday():
+# реализация уведомлений о ДР и событиях ###############################################################################
+async def send_message_birthdays_events():
     with sq.connect("people.db") as con:
         today = datetime.today()  # получение текущей даты
         cur = con.cursor()
-        name_age = {elem[0]: elem[1:] for elem in
-                    cur.execute(f"SELECT name, birthdate, name_declension FROM p1").fetchall()}
-        for key, value in name_age.items():
-            d, m = map(int, value[0].split(".")[:2])
-            dr = datetime(today.year, m, d)
-            delta = dr - today
-            if delta.days < 0:  # если ДР уже прошел - значит следующий - в следующем году, поэтому добавляем 1 год
-                dr = datetime(today.year + 1, m, d)
+        birthdays = {elem[0]: elem[1:] for elem in cur.execute(f"SELECT name, birthdate, name_declension FROM p1").fetchall()}
+        events = {elem[0]: elem[1:] for elem in cur.execute(f"SELECT name, date, access FROM p2").fetchall()}
+
+        async def check_birthdays_and_events(dct):
+            for key, value in dct.items():
+                d, m = map(int, value[0].split(".")[:2])
+                dr = datetime(today.year, m, d)
                 delta = dr - today
-            if delta.days <= 2:  # если до ДР остается меньше двух дней происходит рассылка сообщений пользователям, id
-                # которых добавлены в таблицу id_telegramm в БД
-                for id_t in cur.execute(f"SELECT id_t FROM id_telegramm").fetchall():
-                    await bot.send_message(id_t[0], f"""<b>Уведомление 🍼🍺🍷🥃</b>
-Чувствую я, что близится 
-День Рождения <b>{name_age[key][1]}</b>
-<b>{name_age[key][0]}</b>""", parse_mode='html')
+                if delta.days < 0:  # если ДР уже прошел - значит следующий - в следующем году, поэтому добавляем 1 год
+                    dr = datetime(today.year + 1, m, d)
+                    delta = dr - today
+                if delta.days <= 2:  # если до ДР остается меньше двух дней происходит рассылка сообщений пользователям, id
+                    # которых добавлены в таблицу id_telegramm в БД
+                    if dct == birthdays:
+                        for id_t in cur.execute(f"SELECT id_t FROM id_telegramm").fetchall():
+                            await bot.send_message(id_t[0], f"<b>Уведомление о ДР 🍼🍺🍷🥃</b>\n"
+                                                            f"Чувствую я, что близится...\n"
+                                                            f"День Рождения {value[1]}\n"
+                                                            f"<b>{value[0]}</b>", parse_mode='html')
+                    elif dct == events:
+                        for id_t in cur.execute(f"SELECT id_t FROM id_telegramm").fetchall():
+                            if value[1] == 'all' or id_t[0] in value[1]:
+                                await bot.send_message(id_t[0], f"<b>Уведомление о событии</b>\n"
+                                                                f"{key}\n<b>{value[0]}</b>", parse_mode='html')
+
+        await check_birthdays_and_events(birthdays)
+        await check_birthdays_and_events(events)
 
 
 scheduler = AsyncIOScheduler(timezone="Europe/Moscow")  # запуск уведомлений
-scheduler.add_job(send_message_birthday, trigger="interval", hours=8)
+scheduler.add_job(send_message_birthdays_events, trigger="interval", hours=8)
 scheduler.start()
 
 
@@ -196,7 +207,8 @@ async def callback_1(message):
         elif message.text.lower() == "все др":
             for elem in sorted(other_func.Person.create_person(message.text.lower()),
                                key=lambda x: x.birthday.split(".")[1]):  # сортировка
-                await bot.send_message(message.chat.id, f"{elem.name}\n{elem.birthday}\nвозраст: {elem.get_age()}",
+                await bot.send_message(message.chat.id,
+                                       f"<b>{elem.name}</b>\n{elem.birthday}\nвозраст: {elem.get_age()}",
                                        parse_mode='html')
 
         # реализация модуля с калькулятором
