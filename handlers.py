@@ -63,7 +63,7 @@ async def callback_1(message):
 
 Для вывода информации о дне рождения - введите имя:\n\nДля вывода всего списка - введите: "все ДР."''',
                                    parse_mode='html')
-            await states.Birthday.name_input.set()  # переход в состояние ввода имени именниника
+            await states.Birthday.name_input.set()  # переход в состояние ввода имени именинника
 
         elif message.text.lower() in other_func.Person.create_names():
             await bot.send_message(message.chat.id,

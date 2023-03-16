@@ -90,23 +90,31 @@ class Person:
 
     # получение в виде списка всех имен из таблицы p1 (БД people.db)
     @staticmethod
-    def create_names():
+    def create_names() -> list:
+        """
+        Возвращает список имен (name) и псевдонимов(other_name) из БД (таблица p1)
+        :return: ['аня', 'анна', 'анечка', 'никита', 'рита', 'маргарита']
+        """
         with sq.connect("people.db") as con:
             cur = con.cursor()
-            names = [name.split(",") for elem in cur.execute("SELECT other_name FROM p1").fetchall() for name in elem]
+            names = [name.split(", ") for elem in cur.execute("SELECT other_name FROM p1").fetchall() for name in elem]
             return [name for elem in names for name in elem]
 
-    # обращение к таблице p1 (БД people.db) для последующего создания объекта класса Person и вывода информации
-    # об имени, др и возрасте
     @classmethod
-    def create_person(cls, mes):
+    def create_person(cls, mes: str):
+        """
+        Обращение к БД (таблица p1) для последующего создания объекта класса Person и вывода информации
+        об имени, др и возрасте
+        :param mes: message.text.lower()
+        :return: Person()
+        """
         with sq.connect("people.db") as con:
             cur = con.cursor()
-            if mes in ["все др"]:
+            if mes == "все др":
                 return [Person(elem[0], elem[1].split(".")) for elem in
                         cur.execute(f"SELECT name, birthdate FROM p1").fetchall()]
             else:
                 for _id in cur.execute(f"SELECT id FROM p1").fetchall():
                     name, other_name, birthdate = cur.execute(f"SELECT name, other_name, birthdate FROM p1 WHERE id = {_id[0]}").fetchall()[0]
-                    if mes in [name, *other_name.split(",")]:
+                    if mes in [name, *other_name.split(", ")]:
                         return cls(name, birthdate.split("."))
