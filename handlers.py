@@ -2,6 +2,7 @@ from loader import *
 
 import states
 import other_func
+import keyboards
 
 import sqlite3 as sq
 
@@ -11,14 +12,8 @@ async def start(message):
     mess = f'''Привет <b>{message.from_user.first_name}</b>, ваш id: {message.chat.id}\n\nВведите корректную команду, например:\n\n"финансы"\n"погода"\n"перевод\n"ДР".\n
 Для просмотра доступных команд - введите любой символ.'''
 
-    #  создаем обычную клавиатуру
-    markup = types.ReplyKeyboardMarkup()
-    r_btn1 = types.KeyboardButton("💵Финансы")
-    r_btn2 = types.KeyboardButton("⛅Погода")
-    r_btn3 = types.KeyboardButton("🇬🇧Перевод")
-    r_btn4 = types.KeyboardButton("🎁ДР")
-    r_btn5 = types.KeyboardButton("🧮Калькулятор")
-    markup.add(r_btn1, r_btn2, r_btn3, r_btn4, r_btn5)  # добавляем созданные кнопки
+    #  создаем основную клавиатуру
+    markup = keyboards.MainKeyboard.main_keyboard()
     await bot.send_message(message.chat.id, mess, parse_mode='html', reply_markup=markup)
 
     # добавляем id и name пользователя в таблицу id_telegramm в БД, если id отсутствует в указанной таблице
@@ -76,6 +71,9 @@ async def callback_1(message):
                 await bot.send_message(message.chat.id,
                                        f"<b>{elem.name}</b>\n{elem.birthday}\nвозраст: {elem.get_age()}",
                                        parse_mode='html')
+        elif message.text.lower() == "события":
+            markup = keyboards.MainKeyboard.events()
+            await bot.send_message(message.chat.id, 'Выберите событие', parse_mode='html', reply_markup=markup)
 
         # реализация модуля с калькулятором
         elif message.text.lower() in ["🧮калькулятор", "калькулятор"]:
@@ -96,15 +94,8 @@ async def callback_1(message):
 
         # создаем инлайновую клавиатуру, если ввели неизвестную команду
         else:
-            markup = types.InlineKeyboardMarkup(row_width=3)
-            btn1 = types.InlineKeyboardButton("💵Финансы", callback_data="q1")
-            btn2 = types.InlineKeyboardButton("⛅Погода", callback_data="q2")
-            btn3 = types.InlineKeyboardButton("🇬🇧Перевод", callback_data="q3")
-            btn4 = types.InlineKeyboardButton("🎁ДР", callback_data="q4")
-            btn5 = types.KeyboardButton("🧮Калькулятор", callback_data="q5")
-            markup.add(btn1, btn2, btn3, btn4, btn5)  # добавляем кнопки
-            await bot.send_message(message.chat.id, f"Неизвестная команда.\nВведите корректную команду:",
-                                   reply_markup=markup)
+            markup = keyboards.InlineKeyboard.inline_keyboard()
+            await bot.send_message(message.chat.id, f"Неизвестная команда.\nВведите корректную команду:", reply_markup=markup)
 
 
 
