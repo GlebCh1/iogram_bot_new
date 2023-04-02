@@ -93,7 +93,7 @@ class Person:
     def create_names() -> list:
         """
         Возвращает список имен (name) и псевдонимов(other_name) из БД (таблица p1)
-        :return: ['аня', 'анна', 'анечка', 'никита', 'рита', 'маргарита']
+        :return: ['аня', 'анна', 'анечка', 'никита', 'рита', 'маргарита'...]
         """
         with sq.connect("people.db") as con:
             cur = con.cursor()
