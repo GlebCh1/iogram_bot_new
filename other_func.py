@@ -110,11 +110,10 @@ class Person:
         """
         with sq.connect("people.db") as con:
             cur = con.cursor()
-            if mes == "все др":
-                return [Person(elem[0], elem[1].split(".")) for elem in
-                        cur.execute(f"SELECT name, birthdate FROM p1").fetchall()]
+            if mes == "все дни рождения":
+                return [Person(elem[0], elem[1].split(".")) for elem in cur.execute(f"SELECT name, birthdate FROM p1").fetchall()]
             else:
                 for _id in cur.execute(f"SELECT id FROM p1").fetchall():
                     name, other_name, birthdate = cur.execute(f"SELECT name, other_name, birthdate FROM p1 WHERE id = {_id[0]}").fetchall()[0]
-                    if mes in [name, *other_name.split(", ")]:
+                    if mes in [name.lower(), *other_name.split(", ")]:
                         return cls(name, birthdate.split("."))

@@ -1,7 +1,9 @@
 from string import ascii_letters, digits
 
 from loader import *
+import keyboards
 import other_func
+
 
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
@@ -23,15 +25,26 @@ async def answer_birthday(message, state: FSMContext):
 
     if message.text.lower() in other_func.Person.create_names():
         await search_for_name()
-    elif message.text.lower() in ["все др"]:
-        for elem in sorted(other_func.Person.create_person(message.text.lower()),
-                           key=lambda x: x.birthday.split(".")[1]):  # сортировка
-            await bot.send_message(message.chat.id, f"{elem.name}\n{elem.birthday}\nвозраст: {elem.get_age()}",
-                                   parse_mode='html')
+        markup = keyboards.MainKeyboard.birthdays()
+        await bot.send_message(message.chat.id, f"Для вывода информации о дне рождения - введите имя и фамилию или просто имя", parse_mode='html', reply_markup=markup)
+
+    elif message.text.lower() == "все дни рождения":
+        for elem in sorted(other_func.Person.create_person(message.text.lower()), key=lambda x: x.birthday.split(".")[1]):  # сортировка
+            await bot.send_message(message.chat.id, f"{elem.name}\n{elem.birthday}\nвозраст: {elem.get_age()}", parse_mode="html")
+
+    elif message.text.lower() == "возврат в главное меню":
+        markup = keyboards.MainKeyboard.main_keyboard()
+        await bot.send_message(message.chat.id, f"Выберите функцию", parse_mode="html", reply_markup=markup)
+        await state.finish()  # выход из состояния поиска имени
+
+    elif message.text.lower() == "/start":
+        markup = keyboards.MainKeyboard.main_keyboard()
+        await bot.send_message(message.chat.id, f"Выберите функцию", parse_mode="html", reply_markup=markup)
+        await state.finish()  # выход из состояния поиска имени
+
     else:
-        await bot.send_message(message.chat.id, f"Указанного имени нет в списке, выход из состояния поиска имени...",
-                               parse_mode='html')
-    await state.finish()  # выход из состояния поиска имени
+        markup = keyboards.MainKeyboard.birthdays()
+        await bot.send_message(message.chat.id, f"Указанного имени нет в списке, попробуйте еще раз, введите имя и фамилию или просто имя", parse_mode='html', reply_markup=markup)
 
 
 # реализация FSM для модуля перевода  ##################################################################################

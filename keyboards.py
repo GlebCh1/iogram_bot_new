@@ -4,12 +4,13 @@
 
 from loader import types
 
+
 # класс управления основной клавиатурой
 class MainKeyboard:
 
     @staticmethod
     def main_keyboard() -> types.ReplyKeyboardMarkup:
-        markup = types.ReplyKeyboardMarkup()
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, is_persistent=True)
         btn1 = types.KeyboardButton("💵Финансы")
         btn2 = types.KeyboardButton("⛅Погода")
         btn3 = types.KeyboardButton("🇬🇧Перевод")
@@ -19,12 +20,22 @@ class MainKeyboard:
         return markup
 
     @staticmethod
-    def events():
-        markup = types.ReplyKeyboardMarkup()
+    def events() -> types.ReplyKeyboardMarkup:
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, is_persistent=True)
         btn1 = types.KeyboardButton("🎁Дни рождения")
         btn2 = types.KeyboardButton("Годовщины")
-        btn3 = types.KeyboardButton("Прочие события")
-        markup.add(btn1, btn2, btn3)  # добавляем созданные кнопки в разметку (markup)
+        btn3 = types.KeyboardButton("Дни памяти")
+        btn4 = types.KeyboardButton("Прочие события")
+        btn5 = types.KeyboardButton("Возврат в главное меню")
+        markup.add(btn1, btn2, btn3, btn4, btn5)  # добавляем созданные кнопки в разметку (markup)
+        return markup
+
+    @staticmethod
+    def birthdays() -> types.ReplyKeyboardMarkup:
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, is_persistent=True)
+        btn1 = types.KeyboardButton("Все дни рождения")
+        btn2 = types.KeyboardButton("Возврат в главное меню")
+        markup.add(btn1, btn2)  # добавляем созданные кнопки в разметку (markup)
         return markup
 
 # класс управления инлайновой клавиатурой
