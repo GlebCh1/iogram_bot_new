@@ -1,4 +1,5 @@
 from string import ascii_letters, digits
+import openai
 
 from loader import *
 import keyboards
@@ -32,7 +33,7 @@ async def answer_birthday(message, state: FSMContext):
         for elem in sorted(other_func.Person.create_person(message.text.lower()), key=lambda x: x.birthday.split(".")[1]):  # сортировка
             await bot.send_message(message.chat.id, f"{elem.name}\n{elem.birthday}\nвозраст: {elem.get_age()}", parse_mode="html")
 
-    elif message.text.lower() == "возврат в главное меню":
+    elif message.text.lower() == "выход из состояния / возврат в главное меню":
         markup = keyboards.MainKeyboard.main_keyboard()
         await bot.send_message(message.chat.id, f"Выберите функцию", parse_mode="html", reply_markup=markup)
         await state.finish()  # выход из состояния поиска имени
@@ -85,7 +86,7 @@ async def answer_calculator(message, state: FSMContext):
         num1, num2 = map(lambda num: int(num.strip()) if "." not in num else float(num.strip()), working_line)
         await bot.send_message(message.chat.id,
                                f"{eval(f'{num1}{operator}{num2}', {}, {})}\n\n<b>Выход из состояния калькулятора...</b>",
-                               parse_mode='html')
+                               parse_mode="html")
     except:
         await bot.send_message(message.chat.id, f'''<b>Недопустимый формат ввода значений...</b>
 
@@ -99,5 +100,37 @@ async def answer_calculator(message, state: FSMContext):
 10 // 3 (целочисленное деление)
 10 % 3 (остаток от деления)
 
-<b>Выход из состояния калькулятора...</b>''', parse_mode='html')
+<b>Выход из состояния калькулятора...</b>''', parse_mode="html")
     await state.finish()  # выход из состояния калькулятора
+
+
+# реализация FSM для модуля ChatGPT  ###################################################################################
+class ChatGPT(StatesGroup):
+    nums_input = State()
+
+
+@dp.message_handler(state=ChatGPT.nums_input)
+async def answer_chatgpt(message, state: FSMContext):
+
+    if message.text.lower() == "выход из состояния / возврат в главное меню":
+        markup = keyboards.MainKeyboard.main_keyboard()
+        await bot.send_message(message.chat.id, f"Выберите функцию", parse_mode="html", reply_markup=markup)
+        await state.finish()  # выход из состояния ChatGPT
+
+    elif message.text.lower() == "/start":
+        markup = keyboards.MainKeyboard.main_keyboard()
+        await bot.send_message(message.chat.id, f"Выберите функцию", parse_mode="html", reply_markup=markup)
+        await state.finish()  # выход из состояния ChatGPT
+
+    else:
+        openai.api_key = config.OPENAI_API_KEY
+
+        completion = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "user", "content": message.text}
+            ]
+        )
+        answer_chat_gpt = completion.choices[0].message.content
+
+        await bot.send_message(message.chat.id, answer_chat_gpt, parse_mode="html")

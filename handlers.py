@@ -60,7 +60,6 @@ async def callback_1(message):
             await bot.send_message(message.chat.id, f"Выберите функцию", parse_mode="html", reply_markup=main_markup)
 
 
-
         # реализация опции событий
         elif message.text.lower() == "события":
             markup = keyboards.MainKeyboard.events()
@@ -84,8 +83,8 @@ async def callback_1(message):
 
 
         # реализация опции калькулятора
-        elif message.text.lower() in ["🧮калькулятор", "калькулятор"]:
-            await bot.send_message(message.chat.id, f'''<b>Переход в состояние калькулятора...</b>
+        elif message.text.lower() == "🧮калькулятор":
+            await bot.send_message(message.chat.id, f'''<b>Переход в состояние 🧮Калькулятора...</b>
 
 Допускаются пробелы, а также "." или "," для дробных чисел.
 
@@ -98,7 +97,14 @@ async def callback_1(message):
 9 ** 0.5 (квадратный корень)
 10 // 3 (целочисленное деление)
 10 % 3 (остаток от деления)''', parse_mode='html')
-            await states.Calculator.nums_input.set()  # переход в состояние ввода имени цифр для операция калькулятора
+            await states.Calculator.nums_input.set()  # переход в состояние ввода имени цифр для операции калькулятора
+
+
+        elif message.text.lower() == "🤖chatgpt":
+            markup = keyboards.MainKeyboard.chat_gpt()
+            await bot.send_message(message.chat.id, f"<b>Переход в состояние 🤖ChatGPT...</b>\n\nНапишите что-нибудь, 🤖ChatGPT готов ответить", parse_mode='html', reply_markup=markup)
+            await states.ChatGPT.nums_input.set()  # переход в состояние ChatGPT
+
 
         # создаем инлайновую клавиатуру, если ввели неизвестную команду
         else:

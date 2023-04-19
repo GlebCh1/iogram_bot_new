@@ -16,7 +16,8 @@ class MainKeyboard:
         btn3 = types.KeyboardButton("🇬🇧Перевод")
         btn4 = types.KeyboardButton("События")
         btn5 = types.KeyboardButton("🧮Калькулятор")
-        markup.add(btn1, btn2, btn3, btn4, btn5)  # добавляем созданные кнопки в разметку (markup)
+        btn6 = types.KeyboardButton("🤖ChatGPT")
+        markup.add(btn1, btn2, btn3, btn4, btn5, btn6)  # добавляем созданные кнопки в разметку (markup)
         return markup
 
     @staticmethod
@@ -34,8 +35,15 @@ class MainKeyboard:
     def birthdays() -> types.ReplyKeyboardMarkup:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, is_persistent=True)
         btn1 = types.KeyboardButton("Все дни рождения")
-        btn2 = types.KeyboardButton("Возврат в главное меню")
+        btn2 = types.KeyboardButton("Выход из состояния / возврат в главное меню")
         markup.add(btn1, btn2)  # добавляем созданные кнопки в разметку (markup)
+        return markup
+
+    @staticmethod
+    def chat_gpt() -> types.ReplyKeyboardMarkup:
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, is_persistent=True)
+        btn1 = types.KeyboardButton("Выход из состояния / возврат в главное меню")
+        markup.add(btn1)  # добавляем созданные кнопки в разметку (markup)
         return markup
 
 # класс управления инлайновой клавиатурой
