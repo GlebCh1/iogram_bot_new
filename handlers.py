@@ -103,7 +103,7 @@ async def callback_1(message):
         elif message.text.lower() == "🤖chatgpt":
             markup = keyboards.MainKeyboard.chat_gpt()
             await bot.send_message(message.chat.id, f"<b>Переход в состояние 🤖ChatGPT...</b>\n\nНапишите что-нибудь, 🤖ChatGPT готов ответить", parse_mode='html', reply_markup=markup)
-            await states.ChatGPT.nums_input.set()  # переход в состояние ChatGPT
+            await states.ChatGPT.text_input.set()  # переход в состояние ChatGPT
 
 
         # создаем инлайновую клавиатуру, если ввели неизвестную команду

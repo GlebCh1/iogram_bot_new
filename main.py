@@ -45,8 +45,8 @@ scheduler.add_job(send_message_birthdays_events, trigger="interval", hours=8)
 scheduler.start()
 
 
-
-executor.start_polling(dp)
+if __name__ == "__main__":
+    executor.start_polling(dp)
 
 
 

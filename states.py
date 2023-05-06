@@ -106,10 +106,10 @@ async def answer_calculator(message, state: FSMContext):
 
 # реализация FSM для модуля ChatGPT  ###################################################################################
 class ChatGPT(StatesGroup):
-    nums_input = State()
+    text_input = State()
 
 
-@dp.message_handler(state=ChatGPT.nums_input)
+@dp.message_handler(state=ChatGPT.text_input)
 async def answer_chatgpt(message, state: FSMContext):
 
     if message.text.lower() == "выход из состояния / возврат в главное меню":
@@ -125,12 +125,46 @@ async def answer_chatgpt(message, state: FSMContext):
     else:
         openai.api_key = config.OPENAI_API_KEY
 
-        completion = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "user", "content": message.text}
-            ]
-        )
+        content_system = """Ты полезный ассистент с ИИ, который готов помочь своему пользователю"""
+# Если я попрошу тебя что-то сделать, что можно сделать с помощью программы на python, ты присылаешь мне код программы без объяснений.
+# Если программа должна возвращать какой-то результат, то выводи его с помощью print.
+# Затем я запущу этот код и скажу тебе результат, после чего ты сделаешь ответ из этого результата.
+# Если при выполнении кода возникнет ошибка, я тебе её пришлю и ты исправишь код. Просто пришли мне исправленный код без пояснений.
+# Если ты увидишь, что результат выполнения кода не соответствует твоим ожиданиям, то просто пришли новую версию кода.
+# Если тебе нужна какая-то информация, то получай её из интернета с помощью python и обрабатывай с помощью кода.
+# Не используй код, который требует использование ключей для доступа к api
+# Для написания кода используй специальную библиотеку, которая называется gpt_utils. Она содержит следующие функции:
+# gpt_utils.send_message_to_all(text) - отправляет сообщение всем пользователям
+# Используй библиотеку yfinance для доступа к ценам акций
+# Для работы с вопросами о погоде используй python_weather
+
+        # Получаем предыдущую историю диалога
+        answer_chat_gpt = None
+        dialog_history = await state.get_data()
+
+        # Добавляем сообщение пользователя в историю диалога (первое сообщение)
+        if answer_chat_gpt is None:
+            dialog_history.setdefault('user', []).append(f'Сообщение от пользователя: "{message.text}".'
+                                                         f'\nОтвет модели: "{answer_chat_gpt}"')
+
+        await state.update_data(dialog_history)
+
+        content_assist = '\n'.join(dialog_history['user'])
+
+        print(dialog_history)
+        completion = openai.ChatCompletion.create(model='gpt-3.5-turbo', messages=[{'role': 'user', 'content': message.text},
+                                                                                   {'role': 'assistant', 'content': content_assist}])
         answer_chat_gpt = completion.choices[0].message.content
 
-        await bot.send_message(message.chat.id, answer_chat_gpt, parse_mode="html")
+        dialog_history['user'][-1] = f'Сообщение от пользователя: "{message.text}".'\
+                                     f'\nОтвет модели: "{answer_chat_gpt}"'
+        content_assist = '\n'.join(dialog_history['user'])
+
+        print(content_assist)
+        print()
+        print(dialog_history)
+        await state.update_data(dialog_history)
+
+        # Добавляем сообщение пользователя в историю диалога
+
+        await bot.send_message(message.chat.id, answer_chat_gpt, parse_mode='html')
