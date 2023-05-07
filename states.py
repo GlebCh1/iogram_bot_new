@@ -138,33 +138,26 @@ async def answer_chatgpt(message, state: FSMContext):
 # Используй библиотеку yfinance для доступа к ценам акций
 # Для работы с вопросами о погоде используй python_weather
 
-        # Получаем предыдущую историю диалога
-        answer_chat_gpt = None
+        # Получаем историю диалога
         dialog_history = await state.get_data()
 
-        # Добавляем сообщение пользователя в историю диалога (первое сообщение)
-        if answer_chat_gpt is None:
-            dialog_history.setdefault('user', []).append(f'Сообщение от пользователя: "{message.text}".'
-                                                         f'\nОтвет модели: "{answer_chat_gpt}"')
+        # Добавляем в словарь dialog_history ключ 'user' со значением [], если такого ключа нет (первое сообщение чату)
+        dialog_history.setdefault('user', [])
 
-        await state.update_data(dialog_history)
+        # Добавляем строку 'Сообщение от пользователя: "{message.text}" в список словаря dialog_history по ключу 'user'
+        dialog_history['user'].append(f'Сообщение от пользователя: "{message.text}"')
+        content = '\n\n'.join(dialog_history['user'])
+        print(content)
+        print('\n\n')
 
-        content_assist = '\n'.join(dialog_history['user'])
-
-        print(dialog_history)
-        completion = openai.ChatCompletion.create(model='gpt-3.5-turbo', messages=[{'role': 'user', 'content': message.text},
-                                                                                   {'role': 'assistant', 'content': content_assist}])
+        completion = openai.ChatCompletion.create(model='gpt-3.5-turbo', messages=[{'role': 'user', 'content': content}])
         answer_chat_gpt = completion.choices[0].message.content
 
-        dialog_history['user'][-1] = f'Сообщение от пользователя: "{message.text}".'\
-                                     f'\nОтвет модели: "{answer_chat_gpt}"'
-        content_assist = '\n'.join(dialog_history['user'])
+        dialog_history['user'][-1] = f'Сообщение от пользователя: "{message.text}".\n{answer_chat_gpt}'
 
-        print(content_assist)
-        print()
-        print(dialog_history)
+        # Обновляем историю диалогов, с учетом полученного ответа
         await state.update_data(dialog_history)
 
-        # Добавляем сообщение пользователя в историю диалога
+        print(dialog_history)
 
         await bot.send_message(message.chat.id, answer_chat_gpt, parse_mode='html')
