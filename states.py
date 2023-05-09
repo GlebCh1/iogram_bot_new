@@ -139,7 +139,7 @@ async def answer_chatgpt(message, state: FSMContext):
 # Для работы с вопросами о погоде используй python_weather
 
         # Получаем историю диалога
-        dialog_history = await state.get_data()
+        dialog_history: dict = await state.get_data()
 
         # Добавляем в словарь dialog_history ключ 'user' со значением [], если такого ключа нет (первое сообщение чату)
         if 'user' not in dialog_history:

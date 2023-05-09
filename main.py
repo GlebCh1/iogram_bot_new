@@ -4,6 +4,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from aiogram import executor
 
 from handlers import *
+import webserver
 
 
 # реализация уведомлений о ДР и событиях ###############################################################################
@@ -44,6 +45,7 @@ scheduler = AsyncIOScheduler(timezone="Europe/Moscow")  # запуск увед�
 scheduler.add_job(send_message_birthdays_events, trigger="interval", hours=8)
 scheduler.start()
 
+webserver.keep_alive()
 
 if __name__ == "__main__":
     executor.start_polling(dp)
