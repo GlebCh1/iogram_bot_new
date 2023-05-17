@@ -1,4 +1,10 @@
+"""
+Модуль реализации состояний
+"""
+from datetime import datetime
+from pytz import timezone
 from string import ascii_letters, digits
+import sqlite3 as sq
 import openai
 
 from loader import *
@@ -138,6 +144,24 @@ async def answer_chatgpt(message, state: FSMContext):
 # Используй библиотеку yfinance для доступа к ценам акций
 # Для работы с вопросами о погоде используй python_weather
 
+        # Добавляем id и name пользователя в таблицу chatGPT_dialog_history в БД, если id отсутствует в указанной таблице
+        with sq.connect("people.db") as con:
+            cur = con.cursor()
+            # Если пользователя с данным id нет в таблице chatGPT_dialog_history
+            if message.chat.id not in [elem[0] for elem in cur.execute(f"SELECT id_t FROM chatGPT_dialog_history").fetchall()]:
+                cur.execute(
+                    f"INSERT INTO chatGPT_dialog_history (id_t, name_t) VALUES ({message.chat.id}, '{message.from_user.first_name}')")
+            else:
+                # Определяем желаемый часовой пояс
+                tz = timezone('Europe/Moscow')
+
+                # Получаем текущую дату и время в указанном часовом поясе
+                current_time = datetime.now(tz)
+
+                # Получаем текущую дату и время
+                s = current_time.strftime("%d.%m.%Y, %H:%M:%S")
+
+
         # Получаем историю диалога
         dialog_history: dict = await state.get_data()
 
@@ -164,4 +188,4 @@ async def answer_chatgpt(message, state: FSMContext):
 
         print(dialog_history)
 
-        await bot.send_message(message.chat.id, answer_chat_gpt, parse_mode='html')
+        await bot.send_message(message.chat.id, answer_chat_gpt, parse_mode=None)

@@ -1,14 +1,12 @@
-import openai
+from datetime import datetime
+import pytz
 
-import config
+# Определяем желаемый часовой пояс
+timezone = pytz.timezone('Europe/Moscow')
 
-openai.api_key = config.OPENAI_API_KEY
+# Получаем текущую дату и время в указанном часовом поясе
+current_time = datetime.now(timezone)
 
-completion = openai.ChatCompletion.create(
-  model="gpt-3.5-turbo",
-  messages=[
-    {"role": "user", "content": "Расскажи о мире в стиле пирата"}
-  ]
-)
-
-print(completion.choices[0].message.content)
+# Выводим текущее время
+s = current_time.strftime("%d.%m.%Y, %H:%M:%S")
+pass
