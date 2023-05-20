@@ -131,7 +131,11 @@ async def answer_chatgpt(message, state: FSMContext):
     else:
         openai.api_key = config.OPENAI_API_KEY
 
-        content_system = """Ты полезный ассистент с ИИ, который готов помочь своему пользователю"""
+        # Задаем параметры общего контекста диалога
+        content_system = """Свои ответы никогда не начинай со слов: "Response from ChatGPT:".
+Ты полезный ассистент с ИИ женского пола, который готов помочь своему пользователю.
+Отвечай мне в стиле гопника, используй всякие жаргонные выражения, тюремную лексику.
+"""
 # Если я попрошу тебя что-то сделать, что можно сделать с помощью программы на python, ты присылаешь мне код программы без объяснений.
 # Если программа должна возвращать какой-то результат, то выводи его с помощью print.
 # Затем я запущу этот код и скажу тебе результат, после чего ты сделаешь ответ из этого результата.
@@ -143,49 +147,63 @@ async def answer_chatgpt(message, state: FSMContext):
 # gpt_utils.send_message_to_all(text) - отправляет сообщение всем пользователям
 # Используй библиотеку yfinance для доступа к ценам акций
 # Для работы с вопросами о погоде используй python_weather
+        content_user = 'Привет, можешь ли ты мне помочь?'
+        content_assistant = 'Здравствуйте, да, что Вас интересует?'
+
+        openai_messages = [
+            {'role': 'system', 'content': content_system},
+            {'role': 'user', 'content': content_user},
+            {'role': 'assistant', 'content': content_assistant}
+        ]
 
         # Добавляем id и name пользователя в таблицу chatGPT_dialog_history в БД, если id отсутствует в указанной таблице
-        with sq.connect("people.db") as con:
+        with sq.connect('people.db') as con:
             cur = con.cursor()
+
             # Если пользователя с данным id нет в таблице chatGPT_dialog_history
             if message.chat.id not in [elem[0] for elem in cur.execute(f"SELECT id_t FROM chatGPT_dialog_history").fetchall()]:
-                cur.execute(
-                    f"INSERT INTO chatGPT_dialog_history (id_t, name_t) VALUES ({message.chat.id}, '{message.from_user.first_name}')")
-            else:
-                # Определяем желаемый часовой пояс
-                tz = timezone('Europe/Moscow')
+                cur.execute(f"INSERT INTO chatGPT_dialog_history (id_t, name_t) VALUES ({message.chat.id}, '{message.from_user.first_name}')")
 
-                # Получаем текущую дату и время в указанном часовом поясе
-                current_time = datetime.now(tz)
+            # Определяем желаемый часовой пояс
+            tz = timezone('Europe/Moscow')
 
-                # Получаем текущую дату и время
-                s = current_time.strftime("%d.%m.%Y, %H:%M:%S")
+            # Получаем текущую дату и время в указанном часовом поясе
+            current_time = datetime.now(tz)
 
+            # Получаем текущую дату и время
+            date_time = current_time.strftime('%d.%m.%Y, %H:%M:%S')
 
-        # Получаем историю диалога
-        dialog_history: dict = await state.get_data()
+            # Получаем историю диалога
+            dialog_history = cur.execute(f'SELECT GPT_dialog_history FROM chatGPT_dialog_history WHERE id_t = {message.chat.id}').fetchall()[0][0]
 
-        # Добавляем в словарь dialog_history ключ 'user' со значением [], если такого ключа нет (первое сообщение чату)
-        if 'user' not in dialog_history:
-            dialog_history['user'] = []
+            # Формируем в user_message сообщение от пользователя с указанием текущей даты и времени
+            user_message = f'{date_time}\nMessage from user with id {message.chat.id}:\n{message.text}'
 
-        # Добавляем строку 'Сообщение от пользователя: "{message.text}" в список словаря dialog_history по ключу 'user'
-        dialog_history['user'].append(f'Сообщение от пользователя: "{message.text}"')
+            # Формируем в content объект строки в виде истории сообщений и сообщения от пользователя для дальнейшего...
+            # формирования словаря {'role': 'user', 'content': content}
+            content = f'{dialog_history}\n\n\n{user_message}'
 
-        # Получаем объект сроки из всего списка сообщений для дальнейшей передачи его в метод create класса ChatCompletion
-        content = '\n\n'.join(dialog_history['user'])
-        print(content)
-        print('\n\n')
+            print()
+            print('*******************************************')
+            print(content)
+            print('*******************************************')
+            print()
 
-        completion = openai.ChatCompletion.create(model='gpt-3.5-turbo', messages=[{'role': 'user', 'content': content}])
-        answer_chat_gpt = completion.choices[0].message.content
+            # Добавляем словарь, где content - это история сообщений и сообщение от пользователя, в список контекста
+            openai_messages.append({'role': 'user', 'content': content})
+            completion = openai.ChatCompletion.create(model='gpt-3.5-turbo', messages=openai_messages)
+            answer_chat_gpt = completion.choices[0].message.content
 
-        # Обновляем историю диалогов, с учетом полученного ответа
-        dialog_history['user'][-1] = f'Сообщение от пользователя: "{message.text}".\n{answer_chat_gpt}'
+            # Обновляем историю диалогов, с учетом полученного ответа
+            dialog = f'\n\n{date_time}\nMessage from user with id {message.chat.id}:\n{message.text}\n\nResponse from ChatGPT:\n{answer_chat_gpt}'
+            dialog_history += dialog
 
-        # Сохраняем историю диалогов
-        await state.update_data(dialog_history)
+            cur.execute('UPDATE chatGPT_dialog_history SET GPT_dialog_history = ? WHERE id_t = ?', (dialog_history, message.chat.id))
 
-        print(dialog_history)
+            print()
+            print('-------------------------------------------')
+            print(dialog_history)
+            print('-------------------------------------------')
+            print()
 
         await bot.send_message(message.chat.id, answer_chat_gpt, parse_mode=None)
