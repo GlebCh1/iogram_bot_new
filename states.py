@@ -17,6 +17,10 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import StatesGroup, State
 
 
+CONTENT_SYSTEM = "Ты полезный ассистент с ИИ, который готов помочь своему пользователю."
+
+
+
 # реализация FSM для модуля дней рождений  #############################################################################
 class Birthday(StatesGroup):
     name_input = State()
@@ -104,15 +108,26 @@ async def answer_calculator(message, state: FSMContext):
     await state.finish()  # выход из состояния калькулятора
 
 
+
 # реализация FSM для модуля ChatGPT  ###################################################################################
 class ChatGPT(StatesGroup):
     text_input = State()
+    ChatGPTSystemRole = State()
 
 
 @dp.message_handler(state=ChatGPT.text_input)
 async def answer_chatgpt(message, state: FSMContext):
+    if message.text.lower() == "назначение системной роли chatgpt":
+        markup = keyboards.MainKeyboard.chat_gpt_system_role()
+        await bot.send_message(message.chat.id, f"<b>Переход в состояние выбора системной роли...\n"
+                                                f"Отправьте сообщение и тем самым назначьте системную роль ChatGPT.</b>\n\n"
+                                                f"Пример использования: <i>\"Тебе зовут Шелдон.\n"
+                                                f"Ты должен отвечать как программист Python.\n"
+                                                f"Когда я задаю тебе вопросы про программирование - ты отвечаешь подробно и по существу, "
+                                                f"при этом не затрагивая посторонние темы\".</i>", parse_mode="html", reply_markup=markup)
+        await ChatGPT.ChatGPTSystemRole.set()  # переход в состояние назначения системной роли
 
-    if message.text.lower() == "выход из состояния / возврат в главное меню":
+    elif message.text.lower() == "выход из состояния / возврат в главное меню":
         markup = keyboards.MainKeyboard.main_keyboard()
         await bot.send_message(message.chat.id, f"Выберите функцию", parse_mode="html", reply_markup=markup)
         await state.finish()  # выход из состояния ChatGPT
@@ -126,21 +141,13 @@ async def answer_chatgpt(message, state: FSMContext):
         openai.api_key = config.OPENAI_API_KEY
 
         # Задаем параметры общего контекста диалога
-        content_system = """Свои ответы никогда не начинай со слов: "Response from ChatGPT:".
-Ты полезный ассистент с ИИ женского пола, который готов помочь своему пользователю.
-Отвечай мне в стиле гопника, используй всякие жаргонные выражения, тюремную лексику.
-"""
-# Если я попрошу тебя что-то сделать, что можно сделать с помощью программы на python, ты присылаешь мне код программы без объяснений.
-# Если программа должна возвращать какой-то результат, то выводи его с помощью print.
-# Затем я запущу этот код и скажу тебе результат, после чего ты сделаешь ответ из этого результата.
-# Если при выполнении кода возникнет ошибка, я тебе её пришлю и ты исправишь код. Просто пришли мне исправленный код без пояснений.
-# Если ты увидишь, что результат выполнения кода не соответствует твоим ожиданиям, то просто пришли новую версию кода.
-# Если тебе нужна какая-то информация, то получай её из интернета с помощью python и обрабатывай с помощью кода.
-# Не используй код, который требует использование ключей для доступа к api
-# Для написания кода используй специальную библиотеку, которая называется gpt_utils. Она содержит следующие функции:
-# gpt_utils.send_message_to_all(text) - отправляет сообщение всем пользователям
-# Используй библиотеку yfinance для доступа к ценам акций
-# Для работы с вопросами о погоде используй python_weather
+        with sq.connect("people.db") as con: # Через менеджер контекста вновь подключаемся к БД и получаем системную роль...
+            # пользователя из таблицы chatGPT_dialog_history
+            cur = con.cursor()
+
+            content_system = cur.execute(f"SELECT content_system FROM chatGPT_dialog_history WHERE id_t = {message.chat.id}").fetchall()[0][0]
+            if not content_system:
+                content_system = CONTENT_SYSTEM
         content_user = "Привет, можешь ли ты мне помочь?"
         content_assistant = "Здравствуйте, да, что Вас интересует?"
 
@@ -153,11 +160,11 @@ async def answer_chatgpt(message, state: FSMContext):
         # Добавляем id и name пользователя в таблицу chatGPT_dialog_history в БД, если id отсутствует в указанной таблице
         with sq.connect("people.db") as con:
             cur = con.cursor()
-
             # Если пользователя с данным id нет в таблице chatGPT_dialog_history
             if message.chat.id not in [elem[0] for elem in cur.execute(f"SELECT id_t FROM chatGPT_dialog_history").fetchall()]:
-                cur.execute(f"INSERT INTO chatGPT_dialog_history (id_t, name_t, GPT_dialog_history) VALUES (?, ?, ?)", (message.chat.id, message.from_user.first_name, ""))
-
+                cur.execute(f"INSERT INTO chatGPT_dialog_history (id_t, name_t, GPT_dialog_history, content_system) VALUES (?, ?, ?, ?)", (message.chat.id, message.from_user.first_name, "", CONTENT_SYSTEM))
+                res = cur.execute(f"SELECT GPT_dialog_history FROM chatGPT_dialog_history WHERE id_t = {message.chat.id}").fetchall()
+                print(res)
             # Определяем желаемый часовой пояс
             tz = timezone("Europe/Moscow")
 
@@ -215,3 +222,58 @@ async def answer_chatgpt(message, state: FSMContext):
             cur.execute("UPDATE chatGPT_dialog_history SET GPT_dialog_history = ? WHERE id_t = ?", (dialog_history, message.chat.id))
 
         await bot.send_message(message.chat.id, answer_chat_gpt, parse_mode=None)
+
+
+
+# реализация FSM для модуля назначения системной роли ChatGPT  #########################################################
+@dp.message_handler(state=ChatGPT.ChatGPTSystemRole)
+async def answer_chatgpt_system_role(message, state: FSMContext):
+    if message.text.lower() == "информация о текущей системной роли":
+        with sq.connect("people.db") as con:
+            cur = con.cursor()
+
+            answer = cur.execute(f"SELECT content_system FROM chatGPT_dialog_history WHERE id_t = {message.chat.id}").fetchall()[0][0]
+            if not answer:
+                answer = CONTENT_SYSTEM
+
+                cur.execute("UPDATE chatGPT_dialog_history SET content_system = ? WHERE id_t = ?", (CONTENT_SYSTEM, message.chat.id))
+
+            await bot.send_message(message.chat.id, f"<b>У Вас назначена следующая системная роль:</b>\n\n"
+                                                    f"<i>{answer}</i>\n\n"
+                                                    f"<b>Назначьте новую системную роль</b>.", parse_mode="html")
+
+    elif message.text.lower() == "возврат системной роли, используемой по-умолчанию":
+        with sq.connect("people.db") as con:
+            cur = con.cursor()
+
+            cur.execute("UPDATE chatGPT_dialog_history SET content_system = ? WHERE id_t = ?", (CONTENT_SYSTEM, message.chat.id))
+
+            await bot.send_message(message.chat.id, f"<b>Назначена системная роль, используемая по-умолчанию:</b>\n\n"
+                                                    f"<i>{CONTENT_SYSTEM}</i>", parse_mode="html")
+
+    elif message.text.lower() == "выход из состояния / возврат в предыдущее меню":
+        markup = keyboards.MainKeyboard.chat_gpt()
+        await bot.send_message(message.chat.id, f"<b>🤖Возврат в состояние ChatGPT...</b>\n\n"
+                                                f"Напишите что-нибудь, 🤖ChatGPT готов ответить", parse_mode="html", reply_markup=markup)
+
+        # выход из состояния ChatGPTSystemRole и возврат в состояние ChatGPT
+        await ChatGPT.text_input.set()
+
+    elif message.text.lower() == "/start":
+        markup = keyboards.MainKeyboard.main_keyboard()
+        await bot.send_message(message.chat.id, f"Выберите функцию", parse_mode="html", reply_markup=markup)
+        await state.finish()  # выход из состояния ChatGPTSystemRole
+
+    else:
+        markup = keyboards.MainKeyboard.chat_gpt()
+        with sq.connect("people.db") as con:
+            cur = con.cursor()
+
+            cur.execute("UPDATE chatGPT_dialog_history SET content_system = ? WHERE id_t = ?", (message.text, message.chat.id))
+
+            await bot.send_message(message.chat.id, f"<b>Изменения системной роли сохранены.</b>\n\n"
+                                                    f"<b>🤖Возврат в состояние ChatGPT...</b>\n\n"
+                                                    f"Напишите что-нибудь, 🤖ChatGPT готов ответить", parse_mode="html", reply_markup=markup)
+
+            # выход из состояния ChatGPTSystemRole и возврат в состояние ChatGPT
+            await ChatGPT.text_input.set()

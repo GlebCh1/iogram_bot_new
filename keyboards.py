@@ -42,8 +42,18 @@ class MainKeyboard:
     @staticmethod
     def chat_gpt() -> types.ReplyKeyboardMarkup:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, is_persistent=True)
-        btn1 = types.KeyboardButton("Выход из состояния / возврат в главное меню")
-        markup.add(btn1)  # добавляем созданные кнопки в разметку (markup)
+        btn1 = types.KeyboardButton("Назначение системной роли ChatGPT")
+        btn2 = types.KeyboardButton("Выход из состояния / возврат в главное меню")
+        markup.add(btn1, btn2)  # добавляем созданные кнопки в разметку (markup)
+        return markup
+
+    @staticmethod
+    def chat_gpt_system_role():
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, is_persistent=True)
+        btn1 = types.KeyboardButton("Информация о текущей системной роли")
+        btn2 = types.KeyboardButton("Возврат системной роли, используемой по-умолчанию")
+        btn3 = types.KeyboardButton("Выход из состояния / возврат в предыдущее меню")
+        markup.add(btn1, btn2, btn3)  # добавляем созданные кнопки в разметку (markup)
         return markup
 
 # класс управления инлайновой клавиатурой
