@@ -117,6 +117,14 @@ class ChatGPT(StatesGroup):
 
 @dp.message_handler(state=ChatGPT.text_input)
 async def answer_chatgpt(message, state: FSMContext):
+
+    # Добавляем id и name пользователя в таблицу chatGPT_dialog_history в БД, если id отсутствует в указанной таблице
+    with sq.connect("people.db") as con:
+        cur = con.cursor()
+        # Если пользователя с данным id нет в таблице chatGPT_dialog_history
+        if message.chat.id not in [elem[0] for elem in cur.execute(f"SELECT id_t FROM chatGPT_dialog_history").fetchall()]:
+            cur.execute(f"INSERT INTO chatGPT_dialog_history (id_t, name_t, GPT_dialog_history, content_system) VALUES (?, ?, ?, ?)", (message.chat.id, message.from_user.first_name, "", CONTENT_SYSTEM))
+
     if message.text.lower() == "назначение системной роли chatgpt":
         markup = keyboards.MainKeyboard.chat_gpt_system_role()
         await bot.send_message(message.chat.id, f"<b>Переход в состояние выбора системной роли...\n"
@@ -148,23 +156,15 @@ async def answer_chatgpt(message, state: FSMContext):
             content_system = cur.execute(f"SELECT content_system FROM chatGPT_dialog_history WHERE id_t = {message.chat.id}").fetchall()[0][0]
             if not content_system:
                 content_system = CONTENT_SYSTEM
-        content_user = "Привет, можешь ли ты мне помочь?"
-        content_assistant = "Здравствуйте, да, что Вас интересует?"
 
-        openai_messages = [
-            {"role": "system", "content": content_system},
-            {"role": "user", "content": content_user},
-            {"role": "assistant", "content": content_assistant}
-        ]
+            content_user = "Привет, можешь ли ты мне помочь?"
+            content_assistant = "Здравствуйте, да, что Вас интересует?"
+            openai_messages = [
+                {"role": "system", "content": content_system},
+                {"role": "user", "content": content_user},
+                {"role": "assistant", "content": content_assistant}
+            ]
 
-        # Добавляем id и name пользователя в таблицу chatGPT_dialog_history в БД, если id отсутствует в указанной таблице
-        with sq.connect("people.db") as con:
-            cur = con.cursor()
-            # Если пользователя с данным id нет в таблице chatGPT_dialog_history
-            if message.chat.id not in [elem[0] for elem in cur.execute(f"SELECT id_t FROM chatGPT_dialog_history").fetchall()]:
-                cur.execute(f"INSERT INTO chatGPT_dialog_history (id_t, name_t, GPT_dialog_history, content_system) VALUES (?, ?, ?, ?)", (message.chat.id, message.from_user.first_name, "", CONTENT_SYSTEM))
-                res = cur.execute(f"SELECT GPT_dialog_history FROM chatGPT_dialog_history WHERE id_t = {message.chat.id}").fetchall()
-                print(res)
             # Определяем желаемый часовой пояс
             tz = timezone("Europe/Moscow")
 
